@@ -1,0 +1,39 @@
+{
+  "protocol": "REP",
+  "name": "Reconstructible Event Protocol",
+  "version": "0.1",
+  "status": "experimental",
+  "author": "Manuel Coletta",
+  "organization": "HERMETICUM B.C.E. S.r.l.",
+  "repository": "https://github.com/manuelcoletta1-source/rep-protocol",
+  "specification": {
+    "draft": "draft-coletta-rep-00.md",
+    "rfc_xml": "draft-coletta-rep-00.xml"
+  },
+  "reference_implementation": {
+    "node": "rep-node.py"
+  },
+  "verification_tools": [
+    "rep-verify-evidence.py",
+    "rep-verify-signed-evidence.py",
+    "rep-remote-verifier.py"
+  ],
+  "core_properties": [
+    "append-only event registry",
+    "hash-linked event chain",
+    "deterministic registry verification",
+    "portable evidence export",
+    "signed evidence verification",
+    "remote independent verification"
+  ],
+  "api_endpoints": [
+    "GET /registry",
+    "GET /verify",
+    "GET /evidence",
+    "GET /export-evidence",
+    "GET /export-evidence-signed",
+    "GET /chain-hash",
+    "POST /event"
+  ],
+  "created_at": "2026-03-06"
+}
