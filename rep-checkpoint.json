@@ -1,0 +1,35 @@
+{
+  "checkpoint": {
+    "id": "REP-CHECKPOINT-0001",
+    "protocol": "REP",
+    "protocol_version": "0.1",
+    "network": "REP Experimental Network",
+    "status": "active",
+    "created_at": "2026-03-06T16:30:00Z"
+  },
+  "source": {
+    "node_id": "REP-NODE-0001",
+    "operator_ipr": "IPR-3",
+    "endpoint": "http://127.0.0.1:8080"
+  },
+  "registry_state": {
+    "verification_status": "PASS",
+    "event_count": 2,
+    "last_event_id": "EVT-0001",
+    "last_event_hash": "b79490d99c57248416a753c78a13c359b318494051086ef93596f71cf510ca3a",
+    "chain_hash": "35697a0b3dac5d936cb097d4255984d04fb6b4870fe91817859e802c9d0c341b"
+  },
+  "evidence": {
+    "file": "rep-evidence-signed.json",
+    "evidence_hash": "7e3d2c7bb4379a012d2bcbed9250dcdc00072bd5a1c0d3bd3bf67985a69ae9df",
+    "public_key": "HBCE-EVIDENCE-PUBKEY",
+    "signature": "SEJDRS1FVklERU5DRS1QVUJLRVk6N2UzZDJjN2JiNDM3OWEwMTJkMmJjYmVkOTI1MGRjZGMwMDA3MmJkNWExYzBkM2JkM2JmNjc5ODVhNjlhZTlkZg=="
+  },
+  "properties": [
+    "append-only registry checkpoint",
+    "hash-linked registry state",
+    "portable signed evidence reference",
+    "independent verification anchor"
+  ],
+  "notes": "Experimental REP network checkpoint derived from the current reference node state."
+}
