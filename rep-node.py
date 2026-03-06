@@ -2,9 +2,11 @@ import json
 import hashlib
 import datetime
 import os
+import base64
 
 REGISTRY_FILE = "rep-registry.json"
 DEFAULT_ACTOR_IPR = "IPR-3"
+DEFAULT_PUBLIC_KEY = "HBCE-PUBKEY-IPR-3"
 
 
 def sha256_hex(data: str) -> str:
@@ -46,6 +48,16 @@ def canonical_event_payload(event: dict) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
+def sign_event_hash(event_hash: str, public_key: str) -> str:
+    signature_input = f"{public_key}:{event_hash}"
+    return base64.b64encode(signature_input.encode("utf-8")).decode("utf-8")
+
+
+def verify_signature(event_hash: str, public_key: str, signature: str) -> bool:
+    expected_signature = sign_event_hash(event_hash, public_key)
+    return signature == expected_signature
+
+
 def create_event(
     event_id: str,
     actor_ipr: str,
@@ -53,6 +65,7 @@ def create_event(
     cost: str,
     trace_input: str,
     prev_hash: str,
+    public_key: str,
 ) -> dict:
     time_start = utc_now()
     time_end = time_start
@@ -66,9 +79,11 @@ def create_event(
         "time_start": time_start,
         "time_end": time_end,
         "prev_hash": prev_hash,
+        "public_key": public_key,
     }
 
     event["event_hash"] = sha256_hex(canonical_event_payload(event))
+    event["signature"] = sign_event_hash(event["event_hash"], public_key)
     return event
 
 
@@ -89,6 +104,8 @@ def verify_event(event: dict, expected_prev_hash: str) -> str:
         "time_end",
         "prev_hash",
         "event_hash",
+        "public_key",
+        "signature",
     ]
 
     for field in required:
@@ -100,6 +117,9 @@ def verify_event(event: dict, expected_prev_hash: str) -> str:
 
     recalculated_hash = sha256_hex(canonical_event_payload(event))
     if event["event_hash"] != recalculated_hash:
+        return "FAIL"
+
+    if not verify_signature(event["event_hash"], event["public_key"], event["signature"]):
         return "FAIL"
 
     return "PASS"
@@ -132,6 +152,7 @@ def main() -> None:
         cost="compute resources",
         trace_input="deployment log example",
         prev_hash=prev_hash,
+        public_key=DEFAULT_PUBLIC_KEY,
     )
 
     event_result = verify_event(event, prev_hash)
