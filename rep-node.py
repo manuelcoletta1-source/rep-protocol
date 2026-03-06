@@ -5,38 +5,37 @@ import os
 import base64
 
 REGISTRY_FILE = "rep-registry.json"
-DEFAULT_ACTOR_IPR = "IPR-3"
-DEFAULT_PUBLIC_KEY = "HBCE-PUBKEY-IPR-3"
+ACTOR_FILE = "rep-actors.json"
 
 
 def sha256_hex(data: str) -> str:
-    return hashlib.sha256(data.encode("utf-8")).hexdigest()
+    return hashlib.sha256(data.encode()).hexdigest()
 
 
-def utc_now() -> str:
+def utc_now():
     return datetime.datetime.utcnow().isoformat() + "Z"
 
 
-def load_registry() -> list:
-    if not os.path.exists(REGISTRY_FILE):
-        return []
+def load_json(path, default):
+    if not os.path.exists(path):
+        return default
 
-    with open(REGISTRY_FILE, "r", encoding="utf-8") as f:
+    with open(path) as f:
         try:
-            data = json.load(f)
-            return data if isinstance(data, list) else []
-        except json.JSONDecodeError:
-            return []
+            return json.load(f)
+        except:
+            return default
 
 
-def save_registry(registry: list) -> None:
-    with open(REGISTRY_FILE, "w", encoding="utf-8") as f:
-        json.dump(registry, f, indent=2)
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
 
 
-def canonical_event_payload(event: dict) -> str:
+def canonical_payload(event):
     payload = {
         "event_id": event["event_id"],
+        "event_type": event["event_type"],
         "actor_ipr": event["actor_ipr"],
         "decision": event["decision"],
         "cost": event["cost"],
@@ -45,57 +44,72 @@ def canonical_event_payload(event: dict) -> str:
         "time_end": event["time_end"],
         "prev_hash": event["prev_hash"],
     }
+
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
-def sign_event_hash(event_hash: str, public_key: str) -> str:
-    signature_input = f"{public_key}:{event_hash}"
-    return base64.b64encode(signature_input.encode("utf-8")).decode("utf-8")
+def sign(event_hash, public_key):
+    raw = f"{public_key}:{event_hash}"
+    return base64.b64encode(raw.encode()).decode()
 
 
-def verify_signature(event_hash: str, public_key: str, signature: str) -> bool:
-    expected_signature = sign_event_hash(event_hash, public_key)
-    return signature == expected_signature
+def verify_signature(event_hash, public_key, signature):
+    return sign(event_hash, public_key) == signature
 
 
-def create_event(
-    event_id: str,
-    actor_ipr: str,
-    decision: str,
-    cost: str,
-    trace_input: str,
-    prev_hash: str,
-    public_key: str,
-) -> dict:
-    time_start = utc_now()
-    time_end = time_start
+def create_genesis():
+    event = {
+        "event_id": "EVT-0000",
+        "event_type": "genesis",
+        "actor_ipr": "SYSTEM",
+        "decision": "initialize registry",
+        "cost": "none",
+        "trace": sha256_hex("genesis"),
+        "time_start": utc_now(),
+        "time_end": utc_now(),
+        "prev_hash": "NONE",
+        "public_key": "SYSTEM"
+    }
+
+    event["event_hash"] = sha256_hex(canonical_payload(event))
+    event["signature"] = "GENESIS"
+
+    return event
+
+
+def create_event(actor_ipr, decision, cost, trace_input):
+    registry = load_json(REGISTRY_FILE, [])
+    actors = load_json(ACTOR_FILE, {})
+
+    if actor_ipr not in actors:
+        raise Exception("Unknown actor")
+
+    public_key = actors[actor_ipr]["public_key"]
+    prev_hash = registry[-1]["event_hash"]
 
     event = {
-        "event_id": event_id,
+        "event_id": f"EVT-{len(registry):04d}",
+        "event_type": "operation",
         "actor_ipr": actor_ipr,
         "decision": decision,
         "cost": cost,
         "trace": sha256_hex(trace_input),
-        "time_start": time_start,
-        "time_end": time_end,
+        "time_start": utc_now(),
+        "time_end": utc_now(),
         "prev_hash": prev_hash,
-        "public_key": public_key,
+        "public_key": public_key
     }
 
-    event["event_hash"] = sha256_hex(canonical_event_payload(event))
-    event["signature"] = sign_event_hash(event["event_hash"], public_key)
+    event["event_hash"] = sha256_hex(canonical_payload(event))
+    event["signature"] = sign(event["event_hash"], public_key)
+
     return event
 
 
-def append_event(event: dict) -> None:
-    registry = load_registry()
-    registry.append(event)
-    save_registry(registry)
-
-
-def verify_event(event: dict, expected_prev_hash: str) -> str:
+def verify_event(event, expected_prev):
     required = [
         "event_id",
+        "event_type",
         "actor_ipr",
         "decision",
         "cost",
@@ -105,70 +119,67 @@ def verify_event(event: dict, expected_prev_hash: str) -> str:
         "prev_hash",
         "event_hash",
         "public_key",
-        "signature",
+        "signature"
     ]
 
-    for field in required:
-        if field not in event or not event[field]:
+    for r in required:
+        if r not in event:
             return "FAIL"
 
-    if event["prev_hash"] != expected_prev_hash:
+    if event["prev_hash"] != expected_prev:
         return "FAIL"
 
-    recalculated_hash = sha256_hex(canonical_event_payload(event))
-    if event["event_hash"] != recalculated_hash:
+    if sha256_hex(canonical_payload(event)) != event["event_hash"]:
         return "FAIL"
 
-    if not verify_signature(event["event_hash"], event["public_key"], event["signature"]):
-        return "FAIL"
+    if event["event_type"] != "genesis":
+        if not verify_signature(event["event_hash"], event["public_key"], event["signature"]):
+            return "FAIL"
 
     return "PASS"
 
 
-def verify_registry(registry: list) -> str:
-    expected_prev_hash = "GENESIS"
+def verify_registry():
+    registry = load_json(REGISTRY_FILE, [])
+    prev = "NONE"
 
     for event in registry:
-        result = verify_event(event, expected_prev_hash)
+        result = verify_event(event, prev)
+
         if result != "PASS":
             return "FAIL"
-        expected_prev_hash = event["event_hash"]
+
+        prev = event["event_hash"]
 
     return "PASS"
 
 
-def next_event_id(registry: list) -> str:
-    return f"EVT-{len(registry) + 1:04d}"
+def ensure_genesis():
+    registry = load_json(REGISTRY_FILE, [])
+
+    if len(registry) == 0:
+        genesis = create_genesis()
+        registry.append(genesis)
+        save_json(REGISTRY_FILE, registry)
 
 
-def main() -> None:
-    registry = load_registry()
-    prev_hash = registry[-1]["event_hash"] if registry else "GENESIS"
+def main():
+    ensure_genesis()
 
     event = create_event(
-        event_id=next_event_id(registry),
-        actor_ipr=DEFAULT_ACTOR_IPR,
-        decision="deploy configuration update",
-        cost="compute resources",
-        trace_input="deployment log example",
-        prev_hash=prev_hash,
-        public_key=DEFAULT_PUBLIC_KEY,
+        "IPR-3",
+        "deploy configuration update",
+        "compute resources",
+        "deployment log example"
     )
 
-    event_result = verify_event(event, prev_hash)
-    if event_result != "PASS":
-        print("Event verification:", event_result)
-        print(json.dumps(event, indent=2))
-        return
+    registry = load_json(REGISTRY_FILE, [])
+    registry.append(event)
+    save_json(REGISTRY_FILE, registry)
 
-    append_event(event)
-
-    updated_registry = load_registry()
-    registry_result = verify_registry(updated_registry)
-
-    print("Event verification:", event_result)
-    print("Registry verification:", registry_result)
+    print("Event created")
     print(json.dumps(event, indent=2))
+    print("\nRegistry verification:", verify_registry())
 
 
 if __name__ == "__main__":
