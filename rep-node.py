@@ -1,4 +1,3 @@
-
 import json
 import hashlib
 import datetime
@@ -33,6 +32,7 @@ def save_json(path, data):
 
 
 def canonical_payload(event):
+
     payload = {
         "event_id": event["event_id"],
         "event_type": event["event_type"],
@@ -44,6 +44,7 @@ def canonical_payload(event):
         "time_end": event["time_end"],
         "prev_hash": event["prev_hash"]
     }
+
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
@@ -57,6 +58,7 @@ def verify_signature(event_hash, public_key, signature):
 
 
 def create_genesis():
+
     event = {
         "event_id": "EVT-0000",
         "event_type": "genesis",
@@ -77,6 +79,7 @@ def create_genesis():
 
 
 def ensure_genesis():
+
     registry = load_json(REGISTRY_FILE, [])
 
     if len(registry) == 0:
@@ -89,6 +92,7 @@ def next_event_id(registry):
 
 
 def create_event(actor_ipr, decision, cost, trace_input, event_type="operation"):
+
     registry = load_json(REGISTRY_FILE, [])
     actors = load_json(ACTOR_FILE, {})
 
@@ -118,6 +122,7 @@ def create_event(actor_ipr, decision, cost, trace_input, event_type="operation")
 
 
 def verify_event(event, expected_prev):
+
     if event["prev_hash"] != expected_prev:
         return "FAIL"
 
@@ -132,37 +137,50 @@ def verify_event(event, expected_prev):
 
 
 def verify_registry():
+
     registry = load_json(REGISTRY_FILE, [])
     prev = "NONE"
 
     for event in registry:
+
         if verify_event(event, prev) != "PASS":
             return "FAIL"
+
         prev = event["event_hash"]
 
     return "PASS"
 
 
 def append_event(event):
+
     registry = load_json(REGISTRY_FILE, [])
     registry.append(event)
     save_json(REGISTRY_FILE, registry)
 
 
 def chain_hash():
+
     registry = load_json(REGISTRY_FILE, [])
-    return sha256_hex("".join(event["event_hash"] for event in registry))
+
+    return sha256_hex(
+        "".join(event["event_hash"] for event in registry)
+    )
 
 
 def build_evidence():
+
     registry = load_json(REGISTRY_FILE, [])
     verification = verify_registry()
 
     if registry:
+
         last_event = registry[-1]
+
         last_event_hash = last_event["event_hash"]
         last_event_id = last_event["event_id"]
+
     else:
+
         last_event_hash = None
         last_event_id = None
 
@@ -179,6 +197,7 @@ def build_evidence():
 class REPHandler(BaseHTTPRequestHandler):
 
     def _send(self, code, payload):
+
         body = json.dumps(payload, indent=2).encode()
 
         self.send_response(code)
@@ -203,8 +222,10 @@ class REPHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == "/export-evidence":
+
             evidence = build_evidence()
             filename = "rep-evidence.json"
+
             save_json(filename, evidence)
 
             self._send(200, {
@@ -212,15 +233,18 @@ class REPHandler(BaseHTTPRequestHandler):
                 "file": filename,
                 "evidence": evidence
             })
+
             return
 
         if self.path == "/chain-hash":
+
             self._send(200, {
                 "status": verify_registry(),
                 "event_count": len(load_json(REGISTRY_FILE, [])),
                 "chain_hash": chain_hash(),
                 "generated_at": utc_now()
             })
+
             return
 
         self._send(404, {"error": "Not found"})
@@ -256,6 +280,7 @@ class REPHandler(BaseHTTPRequestHandler):
 
 
 def main():
+
     ensure_genesis()
 
     server = HTTPServer((HOST, PORT), REPHandler)
