@@ -7,6 +7,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 REGISTRY_FILE = "rep-registry.json"
 ACTOR_FILE = "rep-actors.json"
+EVIDENCE_FILE = "rep-evidence.json"
+SIGNED_EVIDENCE_FILE = "rep-evidence-signed.json"
 HOST = "0.0.0.0"
 PORT = 8080
 
@@ -32,7 +34,6 @@ def save_json(path, data):
 
 
 def canonical_payload(event):
-
     payload = {
         "event_id": event["event_id"],
         "event_type": event["event_type"],
@@ -44,21 +45,31 @@ def canonical_payload(event):
         "time_end": event["time_end"],
         "prev_hash": event["prev_hash"]
     }
-
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
-def sign(event_hash, public_key):
-    raw = f"{public_key}:{event_hash}"
+def canonical_evidence_payload(evidence):
+    payload = {
+        "status": evidence["status"],
+        "event_count": evidence["event_count"],
+        "last_event_id": evidence["last_event_id"],
+        "last_event_hash": evidence["last_event_hash"],
+        "final_registry_hash": evidence["final_registry_hash"],
+        "generated_at": evidence["generated_at"]
+    }
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+def sign(data_hash, public_key):
+    raw = f"{public_key}:{data_hash}"
     return base64.b64encode(raw.encode()).decode()
 
 
-def verify_signature(event_hash, public_key, signature):
-    return sign(event_hash, public_key) == signature
+def verify_signature(data_hash, public_key, signature):
+    return sign(data_hash, public_key) == signature
 
 
 def create_genesis():
-
     event = {
         "event_id": "EVT-0000",
         "event_type": "genesis",
@@ -79,7 +90,6 @@ def create_genesis():
 
 
 def ensure_genesis():
-
     registry = load_json(REGISTRY_FILE, [])
 
     if len(registry) == 0:
@@ -92,7 +102,6 @@ def next_event_id(registry):
 
 
 def create_event(actor_ipr, decision, cost, trace_input, event_type="operation"):
-
     registry = load_json(REGISTRY_FILE, [])
     actors = load_json(ACTOR_FILE, {})
 
@@ -122,7 +131,6 @@ def create_event(actor_ipr, decision, cost, trace_input, event_type="operation")
 
 
 def verify_event(event, expected_prev):
-
     if event["prev_hash"] != expected_prev:
         return "FAIL"
 
@@ -137,29 +145,24 @@ def verify_event(event, expected_prev):
 
 
 def verify_registry():
-
     registry = load_json(REGISTRY_FILE, [])
     prev = "NONE"
 
     for event in registry:
-
         if verify_event(event, prev) != "PASS":
             return "FAIL"
-
         prev = event["event_hash"]
 
     return "PASS"
 
 
 def append_event(event):
-
     registry = load_json(REGISTRY_FILE, [])
     registry.append(event)
     save_json(REGISTRY_FILE, registry)
 
 
 def chain_hash():
-
     registry = load_json(REGISTRY_FILE, [])
 
     return sha256_hex(
@@ -168,19 +171,14 @@ def chain_hash():
 
 
 def build_evidence():
-
     registry = load_json(REGISTRY_FILE, [])
     verification = verify_registry()
 
     if registry:
-
         last_event = registry[-1]
-
         last_event_hash = last_event["event_hash"]
         last_event_id = last_event["event_id"]
-
     else:
-
         last_event_hash = None
         last_event_id = None
 
@@ -194,10 +192,23 @@ def build_evidence():
     }
 
 
+def build_signed_evidence():
+    evidence = build_evidence()
+    evidence_hash = sha256_hex(canonical_evidence_payload(evidence))
+    public_key = "HBCE-EVIDENCE-PUBKEY"
+    signature = sign(evidence_hash, public_key)
+
+    return {
+        "evidence": evidence,
+        "evidence_hash": evidence_hash,
+        "public_key": public_key,
+        "signature": signature
+    }
+
+
 class REPHandler(BaseHTTPRequestHandler):
 
     def _send(self, code, payload):
-
         body = json.dumps(payload, indent=2).encode()
 
         self.send_response(code)
@@ -222,29 +233,34 @@ class REPHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == "/export-evidence":
-
             evidence = build_evidence()
-            filename = "rep-evidence.json"
-
-            save_json(filename, evidence)
+            save_json(EVIDENCE_FILE, evidence)
 
             self._send(200, {
                 "status": "EXPORTED",
-                "file": filename,
+                "file": EVIDENCE_FILE,
                 "evidence": evidence
             })
+            return
 
+        if self.path == "/export-evidence-signed":
+            signed_evidence = build_signed_evidence()
+            save_json(SIGNED_EVIDENCE_FILE, signed_evidence)
+
+            self._send(200, {
+                "status": "EXPORTED",
+                "file": SIGNED_EVIDENCE_FILE,
+                "signed_evidence": signed_evidence
+            })
             return
 
         if self.path == "/chain-hash":
-
             self._send(200, {
                 "status": verify_registry(),
                 "event_count": len(load_json(REGISTRY_FILE, [])),
                 "chain_hash": chain_hash(),
                 "generated_at": utc_now()
             })
-
             return
 
         self._send(404, {"error": "Not found"})
@@ -280,7 +296,6 @@ class REPHandler(BaseHTTPRequestHandler):
 
 
 def main():
-
     ensure_genesis()
 
     server = HTTPServer((HOST, PORT), REPHandler)
@@ -290,6 +305,7 @@ def main():
     print("GET  /verify")
     print("GET  /evidence")
     print("GET  /export-evidence")
+    print("GET  /export-evidence-signed")
     print("GET  /chain-hash")
     print("POST /event")
 
