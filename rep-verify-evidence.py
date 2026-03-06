@@ -12,22 +12,21 @@ REQUIRED_FIELDS = [
 ]
 
 
-def main():
-    filename = "rep-evidence.json"
+def load_evidence(path):
 
-    if len(sys.argv) > 1:
-        filename = sys.argv[1]
-
-    if not os.path.exists(filename):
+    if not os.path.exists(path):
         print("FAIL: evidence file not found")
         sys.exit(1)
 
-    with open(filename, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8") as f:
         try:
-            evidence = json.load(f)
+            return json.load(f)
         except Exception:
             print("FAIL: invalid JSON")
             sys.exit(1)
+
+
+def validate_structure(evidence):
 
     for field in REQUIRED_FIELDS:
         if field not in evidence:
@@ -41,6 +40,18 @@ def main():
     if not isinstance(evidence["event_count"], int):
         print("FAIL: event_count must be integer")
         sys.exit(1)
+
+
+def main():
+
+    filename = "rep-evidence.json"
+
+    if len(sys.argv) > 1:
+        filename = sys.argv[1]
+
+    evidence = load_evidence(filename)
+
+    validate_structure(evidence)
 
     print("PASS: evidence structure is valid")
     print(json.dumps(evidence, indent=2))
