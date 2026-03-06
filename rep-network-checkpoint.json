@@ -1,0 +1,48 @@
+{
+  "network": {
+    "name": "REP Experimental Network",
+    "protocol": "REP",
+    "protocol_version": "0.1",
+    "checkpoint_id": "REP-NETWORK-CHECKPOINT-0001",
+    "created_at": "2026-03-06T16:40:00Z",
+    "status": "active"
+  },
+  "chain_state": {
+    "event_count": 2,
+    "last_event_id": "EVT-0001",
+    "last_event_hash": "b79490d99c57248416a753c78a13c359b318494051086ef93596f71cf510ca3a",
+    "chain_hash": "35697a0b3dac5d936cb097d4255984d04fb6b4870fe91817859e802c9d0c341b"
+  },
+  "attestations": [
+    {
+      "node_id": "REP-NODE-0001",
+      "role": "producer-node",
+      "endpoint": "http://127.0.0.1:8080",
+      "verification": "PASS",
+      "method": "local-registry-verification",
+      "evidence_file": "rep-evidence-signed.json",
+      "evidence_hash": "7e3d2c7bb4379a012d2bcbed9250dcdc00072bd5a1c0d3bd3bf67985a69ae9df",
+      "public_key": "HBCE-EVIDENCE-PUBKEY",
+      "signature": "SEJDRS1FVklERU5DRS1QVUJLRVk6N2UzZDJjN2JiNDM3OWEwMTJkMmJjYmVkOTI1MGRjZGMwMDA3MmJkNWExYzBkM2JkM2JmNjc5ODVhNjlhZTlkZg==",
+      "attested_at": "2026-03-06T16:40:00Z"
+    },
+    {
+      "node_id": "REP-NODE-0002",
+      "role": "verifier-node",
+      "endpoint": "remote-verifier",
+      "verification": "PASS",
+      "method": "remote-signed-evidence-verification",
+      "verified_chain_hash": "35697a0b3dac5d936cb097d4255984d04fb6b4870fe91817859e802c9d0c341b",
+      "tool": "rep-remote-verifier.py",
+      "attested_at": "2026-03-06T16:40:05Z"
+    }
+  ],
+  "properties": [
+    "multi-node chain hash agreement",
+    "independent verification",
+    "append-only registry state",
+    "portable network checkpoint",
+    "consensus without blockchain"
+  ],
+  "notes": "First experimental REP network checkpoint confirming chain state across producer and verifier nodes."
+}
