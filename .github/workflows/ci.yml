@@ -1,0 +1,23 @@
+name: draft-build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+
+      - name: Install kramdown-rfc
+        run: gem install kramdown-rfc
+
+      - name: Build Internet-Draft
+        run: kramdown-rfc draft-coletta-rep-00.md > draft-coletta-rep-00.xml
