@@ -1,0 +1,38 @@
+{
+  "node_id": "REP-NODE-0003",
+  "protocol": "REP",
+  "protocol_version": "0.1",
+  "status": "active",
+  "role": "witness-node",
+  "operator": {
+    "id": "IPR-3",
+    "name": "Manuel Coletta",
+    "organization": "HERMETICUM B.C.E. S.r.l."
+  },
+  "network": {
+    "name": "REP Experimental Network",
+    "verification_mode": "independent",
+    "topology": "multi-node"
+  },
+  "witness_target": {
+    "network_checkpoint": "rep-network-checkpoint.json",
+    "producer_node": "REP-NODE-0001",
+    "verifier_node": "REP-NODE-0002",
+    "method": "checkpoint-attestation"
+  },
+  "capabilities": [
+    "checkpoint-witnessing",
+    "chain-hash-attestation",
+    "network-state-confirmation"
+  ],
+  "tools": [
+    "rep-remote-verifier.py",
+    "rep-verify-signed-evidence.py"
+  ],
+  "attestation_policy": {
+    "rule": "producer-pass && verifier-pass && chain-hash-match ? PASS : FAIL",
+    "output": "network witness confirmation"
+  },
+  "created_at": "2026-03-06",
+  "notes": "Experimental REP witness node used to attest multi-node checkpoint consistency."
+}
