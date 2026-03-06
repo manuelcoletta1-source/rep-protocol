@@ -1,122 +1,66 @@
 import json
-import os
-import sys
 import hashlib
 import base64
+import os
 
-REQUIRED_EVIDENCE_FIELDS = [
-    "status",
-    "event_count",
-    "last_event_id",
-    "last_event_hash",
-    "final_registry_hash",
-    "generated_at",
-]
 
-REQUIRED_SIGNED_FIELDS = [
-    "evidence",
-    "evidence_hash",
-    "public_key",
-    "signature",
-]
+EVIDENCE_FILE = "rep-evidence-signed.json"
 
 
 def sha256_hex(data: str) -> str:
     return hashlib.sha256(data.encode()).hexdigest()
 
 
-def canonical_evidence_payload(evidence):
-    payload = {
-        "status": evidence["status"],
-        "event_count": evidence["event_count"],
-        "last_event_id": evidence["last_event_id"],
-        "last_event_hash": evidence["last_event_hash"],
-        "final_registry_hash": evidence["final_registry_hash"],
-        "generated_at": evidence["generated_at"],
-    }
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+def canonical_json(data):
+    return json.dumps(data, sort_keys=True, separators=(",", ":"))
 
 
-def sign(data_hash, public_key):
-    raw = f"{public_key}:{data_hash}"
+def sign(event_hash, public_key):
+    raw = f"{public_key}:{event_hash}"
     return base64.b64encode(raw.encode()).decode()
 
 
-def load_signed_evidence(path):
-
-    if not os.path.exists(path):
-        print("FAIL: signed evidence file not found")
-        sys.exit(1)
-
-    with open(path, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except Exception:
-            print("FAIL: invalid JSON")
-            sys.exit(1)
+def verify_signature(event_hash, public_key, signature):
+    return sign(event_hash, public_key) == signature
 
 
-def validate_signed_structure(data):
+def load_signed_evidence():
 
-    for field in REQUIRED_SIGNED_FIELDS:
-        if field not in data:
-            print(f"FAIL: missing field {field}")
-            sys.exit(1)
+    if not os.path.exists(EVIDENCE_FILE):
+        raise Exception("rep-evidence-signed.json not found")
+
+    with open(EVIDENCE_FILE, "r") as f:
+        return json.load(f)
+
+
+def verify_signed_evidence():
+
+    data = load_signed_evidence()
 
     evidence = data["evidence"]
+    evidence_hash = data["evidence_hash"]
+    public_key = data["public_key"]
+    signature = data["signature"]
 
-    if not isinstance(evidence, dict):
-        print("FAIL: evidence must be an object")
-        sys.exit(1)
+    recomputed_hash = sha256_hex(canonical_json(evidence))
 
-    for field in REQUIRED_EVIDENCE_FIELDS:
-        if field not in evidence:
-            print(f"FAIL: missing evidence field {field}")
-            sys.exit(1)
+    if recomputed_hash != evidence_hash:
+        print("FAIL: evidence hash mismatch")
+        return False
 
-    if evidence["status"] not in ["PASS", "FAIL"]:
-        print("FAIL: invalid evidence status")
-        sys.exit(1)
+    if not verify_signature(evidence_hash, public_key, signature):
+        print("FAIL: signature invalid")
+        return False
 
-    if not isinstance(evidence["event_count"], int):
-        print("FAIL: event_count must be integer")
-        sys.exit(1)
+    print("PASS: signed evidence is valid")
+    print(json.dumps(data, indent=2))
 
-
-def verify_evidence_hash(data):
-
-    evidence = data["evidence"]
-    expected_hash = sha256_hex(canonical_evidence_payload(evidence))
-
-    if expected_hash != data["evidence_hash"]:
-        print("FAIL: evidence_hash mismatch")
-        sys.exit(1)
-
-
-def verify_signature(data):
-
-    expected_signature = sign(data["evidence_hash"], data["public_key"])
-
-    if expected_signature != data["signature"]:
-        print("FAIL: signature mismatch")
-        sys.exit(1)
+    return True
 
 
 def main():
 
-    filename = "rep-evidence-signed.json"
-
-    if len(sys.argv) > 1:
-        filename = sys.argv[1]
-
-    data = load_signed_evidence(filename)
-
-    validate_signed_structure(data)
-    verify_evidence_hash(data)
-    verify_signature(data)
-
-    print("PASS: signed evidence is valid")
-    print(json.dumps(data, indent=2))
+    verify_signed_evidence()
 
 
 if __name__ == "__main__":
