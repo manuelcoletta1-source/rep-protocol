@@ -109,8 +109,10 @@ def create_event(actor_ipr, decision, cost, trace_input, event_type="operation")
         "prev_hash": prev_hash,
         "public_key": public_key,
     }
+
     event["event_hash"] = sha256_hex(canonical_payload(event))
     event["signature"] = sign(event["event_hash"], public_key)
+
     return event
 
 
@@ -131,7 +133,7 @@ def verify_event(event, expected_prev):
     ]
 
     for r in required:
-        if r not in event or event[r] in ("", None):
+        if r not in event:
             return "FAIL"
 
     if event["prev_hash"] != expected_prev:
@@ -193,6 +195,7 @@ def build_evidence():
 
 
 class REPHandler(BaseHTTPRequestHandler):
+
     def _send(self, code, payload):
         body = json.dumps(payload, indent=2).encode("utf-8")
         self.send_response(code)
@@ -202,6 +205,7 @@ class REPHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+
         if self.path == "/registry":
             self._send(200, load_json(REGISTRY_FILE, []))
             return
@@ -214,9 +218,25 @@ class REPHandler(BaseHTTPRequestHandler):
             self._send(200, build_evidence())
             return
 
+        if self.path == "/export-evidence":
+
+            evidence = build_evidence()
+
+            filename = "rep-evidence.json"
+            save_json(filename, evidence)
+
+            self._send(200, {
+                "status": "EXPORTED",
+                "file": filename,
+                "evidence": evidence
+            })
+
+            return
+
         self._send(404, {"error": "Not found"})
 
     def do_POST(self):
+
         if self.path != "/event":
             self._send(404, {"error": "Not found"})
             return
@@ -231,8 +251,9 @@ class REPHandler(BaseHTTPRequestHandler):
             return
 
         required = ["actor_ipr", "decision", "cost", "trace_input"]
+
         for field in required:
-            if field not in data or not data[field]:
+            if field not in data:
                 self._send(400, {"error": f"Missing field: {field}"})
                 return
 
@@ -253,20 +274,29 @@ class REPHandler(BaseHTTPRequestHandler):
             return
 
         append_event(event)
-        self._send(201, {"status": "PASS", "event": event})
+
+        self._send(201, {
+            "status": "PASS",
+            "event": event
+        })
 
     def log_message(self, format, *args):
         return
 
 
 def main():
+
     ensure_genesis()
+
     server = HTTPServer((HOST, PORT), REPHandler)
+
     print(f"REP node API running on http://{HOST}:{PORT}")
     print("GET  /registry")
     print("GET  /verify")
     print("GET  /evidence")
+    print("GET  /export-evidence")
     print("POST /event")
+
     server.serve_forever()
 
 
