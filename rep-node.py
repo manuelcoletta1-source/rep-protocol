@@ -176,14 +176,16 @@ def build_evidence():
             "".join(event["event_hash"] for event in registry)
         )
         last_event_hash = last_event["event_hash"]
+        last_event_id = last_event["event_id"]
     else:
         final_registry_hash = sha256_hex("")
         last_event_hash = None
+        last_event_id = None
 
     return {
         "status": verification,
         "event_count": len(registry),
-        "last_event_id": registry[-1]["event_id"] if registry else None,
+        "last_event_id": last_event_id,
         "last_event_hash": last_event_hash,
         "final_registry_hash": final_registry_hash,
         "generated_at": utc_now(),
