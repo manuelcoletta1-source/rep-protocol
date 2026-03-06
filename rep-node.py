@@ -166,6 +166,30 @@ def append_event(event):
     save_json(REGISTRY_FILE, registry)
 
 
+def build_evidence():
+    registry = load_json(REGISTRY_FILE, [])
+    verification = verify_registry()
+
+    if registry:
+        last_event = registry[-1]
+        final_registry_hash = sha256_hex(
+            "".join(event["event_hash"] for event in registry)
+        )
+        last_event_hash = last_event["event_hash"]
+    else:
+        final_registry_hash = sha256_hex("")
+        last_event_hash = None
+
+    return {
+        "status": verification,
+        "event_count": len(registry),
+        "last_event_id": registry[-1]["event_id"] if registry else None,
+        "last_event_hash": last_event_hash,
+        "final_registry_hash": final_registry_hash,
+        "generated_at": utc_now(),
+    }
+
+
 class REPHandler(BaseHTTPRequestHandler):
     def _send(self, code, payload):
         body = json.dumps(payload, indent=2).encode("utf-8")
@@ -182,6 +206,10 @@ class REPHandler(BaseHTTPRequestHandler):
 
         if self.path == "/verify":
             self._send(200, {"registry_verification": verify_registry()})
+            return
+
+        if self.path == "/evidence":
+            self._send(200, build_evidence())
             return
 
         self._send(404, {"error": "Not found"})
@@ -235,6 +263,7 @@ def main():
     print(f"REP node API running on http://{HOST}:{PORT}")
     print("GET  /registry")
     print("GET  /verify")
+    print("GET  /evidence")
     print("POST /event")
     server.serve_forever()
 
