@@ -4,6 +4,7 @@ import datetime
 import os
 
 REGISTRY_FILE = "rep-registry.json"
+DEFAULT_ACTOR_IPR = "IPR-3"
 
 
 def sha256_hex(data: str) -> str:
@@ -21,9 +22,7 @@ def load_registry() -> list:
     with open(REGISTRY_FILE, "r", encoding="utf-8") as f:
         try:
             data = json.load(f)
-            if isinstance(data, list):
-                return data
-            return []
+            return data if isinstance(data, list) else []
         except json.JSONDecodeError:
             return []
 
@@ -36,6 +35,7 @@ def save_registry(registry: list) -> None:
 def canonical_event_payload(event: dict) -> str:
     payload = {
         "event_id": event["event_id"],
+        "actor_ipr": event["actor_ipr"],
         "decision": event["decision"],
         "cost": event["cost"],
         "trace": event["trace"],
@@ -46,12 +46,20 @@ def canonical_event_payload(event: dict) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
-def create_event(event_id: str, decision: str, cost: str, trace_input: str, prev_hash: str) -> dict:
+def create_event(
+    event_id: str,
+    actor_ipr: str,
+    decision: str,
+    cost: str,
+    trace_input: str,
+    prev_hash: str,
+) -> dict:
     time_start = utc_now()
     time_end = time_start
 
     event = {
         "event_id": event_id,
+        "actor_ipr": actor_ipr,
         "decision": decision,
         "cost": cost,
         "trace": sha256_hex(trace_input),
@@ -73,6 +81,7 @@ def append_event(event: dict) -> None:
 def verify_event(event: dict, expected_prev_hash: str) -> str:
     required = [
         "event_id",
+        "actor_ipr",
         "decision",
         "cost",
         "trace",
@@ -118,15 +127,16 @@ def main() -> None:
 
     event = create_event(
         event_id=next_event_id(registry),
+        actor_ipr=DEFAULT_ACTOR_IPR,
         decision="deploy configuration update",
         cost="compute resources",
         trace_input="deployment log example",
         prev_hash=prev_hash,
     )
 
-    single_result = verify_event(event, prev_hash)
-    if single_result != "PASS":
-        print("Verification:", single_result)
+    event_result = verify_event(event, prev_hash)
+    if event_result != "PASS":
+        print("Event verification:", event_result)
         print(json.dumps(event, indent=2))
         return
 
@@ -135,7 +145,7 @@ def main() -> None:
     updated_registry = load_registry()
     registry_result = verify_registry(updated_registry)
 
-    print("Event verification:", single_result)
+    print("Event verification:", event_result)
     print("Registry verification:", registry_result)
     print(json.dumps(event, indent=2))
 
