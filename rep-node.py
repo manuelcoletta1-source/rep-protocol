@@ -12,25 +12,22 @@ PORT = 8080
 
 
 def sha256_hex(data: str) -> str:
-    return hashlib.sha256(data.encode("utf-8")).hexdigest()
+    return hashlib.sha256(data.encode()).hexdigest()
 
 
-def utc_now() -> str:
+def utc_now():
     return datetime.datetime.utcnow().isoformat() + "Z"
 
 
 def load_json(path, default):
     if not os.path.exists(path):
         return default
-    with open(path, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except Exception:
-            return default
+    with open(path, "r") as f:
+        return json.load(f)
 
 
 def save_json(path, data):
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "w") as f:
         json.dump(data, f, indent=2)
 
 
@@ -44,14 +41,15 @@ def canonical_payload(event):
         "trace": event["trace"],
         "time_start": event["time_start"],
         "time_end": event["time_end"],
-        "prev_hash": event["prev_hash"],
+        "prev_hash": event["prev_hash"]
     }
+
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
 def sign(event_hash, public_key):
     raw = f"{public_key}:{event_hash}"
-    return base64.b64encode(raw.encode("utf-8")).decode("utf-8")
+    return base64.b64encode(raw.encode()).decode()
 
 
 def verify_signature(event_hash, public_key, signature):
@@ -59,6 +57,7 @@ def verify_signature(event_hash, public_key, signature):
 
 
 def create_genesis():
+
     event = {
         "event_id": "EVT-0000",
         "event_type": "genesis",
@@ -69,15 +68,19 @@ def create_genesis():
         "time_start": utc_now(),
         "time_end": utc_now(),
         "prev_hash": "NONE",
-        "public_key": "SYSTEM",
+        "public_key": "SYSTEM"
     }
+
     event["event_hash"] = sha256_hex(canonical_payload(event))
     event["signature"] = "GENESIS"
+
     return event
 
 
 def ensure_genesis():
+
     registry = load_json(REGISTRY_FILE, [])
+
     if len(registry) == 0:
         registry.append(create_genesis())
         save_json(REGISTRY_FILE, registry)
@@ -88,6 +91,7 @@ def next_event_id(registry):
 
 
 def create_event(actor_ipr, decision, cost, trace_input, event_type="operation"):
+
     registry = load_json(REGISTRY_FILE, [])
     actors = load_json(ACTOR_FILE, {})
 
@@ -95,7 +99,8 @@ def create_event(actor_ipr, decision, cost, trace_input, event_type="operation")
         raise ValueError("Unknown actor")
 
     public_key = actors[actor_ipr]["public_key"]
-    prev_hash = registry[-1]["event_hash"] if registry else "NONE"
+
+    prev_hash = registry[-1]["event_hash"]
 
     event = {
         "event_id": next_event_id(registry),
@@ -107,7 +112,7 @@ def create_event(actor_ipr, decision, cost, trace_input, event_type="operation")
         "time_start": utc_now(),
         "time_end": utc_now(),
         "prev_hash": prev_hash,
-        "public_key": public_key,
+        "public_key": public_key
     }
 
     event["event_hash"] = sha256_hex(canonical_payload(event))
@@ -117,24 +122,6 @@ def create_event(actor_ipr, decision, cost, trace_input, event_type="operation")
 
 
 def verify_event(event, expected_prev):
-    required = [
-        "event_id",
-        "event_type",
-        "actor_ipr",
-        "decision",
-        "cost",
-        "trace",
-        "time_start",
-        "time_end",
-        "prev_hash",
-        "event_hash",
-        "public_key",
-        "signature",
-    ]
-
-    for r in required:
-        if r not in event:
-            return "FAIL"
 
     if event["prev_hash"] != expected_prev:
         return "FAIL"
@@ -150,36 +137,45 @@ def verify_event(event, expected_prev):
 
 
 def verify_registry():
+
     registry = load_json(REGISTRY_FILE, [])
     prev = "NONE"
 
     for event in registry:
-        result = verify_event(event, prev)
-        if result != "PASS":
+
+        if verify_event(event, prev) != "PASS":
             return "FAIL"
+
         prev = event["event_hash"]
 
     return "PASS"
 
 
 def append_event(event):
+
     registry = load_json(REGISTRY_FILE, [])
     registry.append(event)
     save_json(REGISTRY_FILE, registry)
 
 
 def build_evidence():
+
     registry = load_json(REGISTRY_FILE, [])
     verification = verify_registry()
 
     if registry:
+
         last_event = registry[-1]
+
         final_registry_hash = sha256_hex(
             "".join(event["event_hash"] for event in registry)
         )
+
         last_event_hash = last_event["event_hash"]
         last_event_id = last_event["event_id"]
+
     else:
+
         final_registry_hash = sha256_hex("")
         last_event_hash = None
         last_event_id = None
@@ -190,18 +186,21 @@ def build_evidence():
         "last_event_id": last_event_id,
         "last_event_hash": last_event_hash,
         "final_registry_hash": final_registry_hash,
-        "generated_at": utc_now(),
+        "generated_at": utc_now()
     }
 
 
 class REPHandler(BaseHTTPRequestHandler):
 
     def _send(self, code, payload):
-        body = json.dumps(payload, indent=2).encode("utf-8")
+
+        body = json.dumps(payload, indent=2).encode()
+
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
+
         self.wfile.write(body)
 
     def do_GET(self):
@@ -223,6 +222,7 @@ class REPHandler(BaseHTTPRequestHandler):
             evidence = build_evidence()
 
             filename = "rep-evidence.json"
+
             save_json(filename, evidence)
 
             self._send(200, {
@@ -241,37 +241,18 @@ class REPHandler(BaseHTTPRequestHandler):
             self._send(404, {"error": "Not found"})
             return
 
-        content_length = int(self.headers.get("Content-Length", "0"))
+        content_length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(content_length)
 
-        try:
-            data = json.loads(raw.decode("utf-8"))
-        except Exception:
-            self._send(400, {"error": "Invalid JSON"})
-            return
+        data = json.loads(raw)
 
-        required = ["actor_ipr", "decision", "cost", "trace_input"]
-
-        for field in required:
-            if field not in data:
-                self._send(400, {"error": f"Missing field: {field}"})
-                return
-
-        try:
-            event = create_event(
-                actor_ipr=data["actor_ipr"],
-                decision=data["decision"],
-                cost=data["cost"],
-                trace_input=data["trace_input"],
-                event_type=data.get("event_type", "operation"),
-            )
-        except Exception as e:
-            self._send(400, {"error": str(e)})
-            return
-
-        if verify_event(event, event["prev_hash"]) != "PASS":
-            self._send(500, {"error": "Event verification failed"})
-            return
+        event = create_event(
+            actor_ipr=data["actor_ipr"],
+            decision=data["decision"],
+            cost=data["cost"],
+            trace_input=data["trace_input"],
+            event_type=data.get("event_type", "operation")
+        )
 
         append_event(event)
 
