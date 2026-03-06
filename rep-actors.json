@@ -1,0 +1,10 @@
+{
+  "IPR-3": {
+    "name": "Manuel Coletta",
+    "public_key": "HBCE-PUBKEY-IPR-3"
+  },
+  "AI-JOKER-C2": {
+    "name": "Joker-C2",
+    "public_key": "HBCE-PUBKEY-JOKER"
+  }
+}
