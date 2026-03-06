@@ -1,0 +1,72 @@
+[
+  {
+    "event_id": "EVT-0000",
+    "event_type": "genesis",
+    "actor": "SYSTEM",
+    "decision": "initialize world registry",
+    "cost": "none",
+    "trace": "genesis event",
+    "time": "2026-03-06T00:00:00Z",
+    "context": "world baseline state"
+  },
+  {
+    "event_id": "EVT-0001",
+    "event_type": "geopolitics",
+    "actor": "multiple states",
+    "decision": "military escalation in Middle East",
+    "cost": "regional instability, energy risk",
+    "trace": "reports of tensions involving Iran, US and regional actors",
+    "time": "2026-03-06T08:00:00Z",
+    "context": "global geopolitical tension"
+  },
+  {
+    "event_id": "EVT-0002",
+    "event_type": "economics",
+    "actor": "global markets",
+    "decision": "energy market reaction",
+    "cost": "volatility in oil and gas prices",
+    "trace": "financial market movements linked to geopolitical risk",
+    "time": "2026-03-06T09:30:00Z",
+    "context": "energy shock affecting EU economy"
+  },
+  {
+    "event_id": "EVT-0003",
+    "event_type": "european-politics",
+    "actor": "EU institutions",
+    "decision": "coordination meeting on Middle East crisis",
+    "cost": "diplomatic and strategic tension inside EU",
+    "trace": "European leaders coordinating response",
+    "time": "2026-03-06T10:00:00Z",
+    "context": "EU geopolitical coordination"
+  },
+  {
+    "event_id": "EVT-0004",
+    "event_type": "policy",
+    "actor": "EU agricultural sector",
+    "decision": "pressure against EU-Mercosur agreement",
+    "cost": "trade tensions and agricultural protests",
+    "trace": "farmer mobilizations and EU safeguard discussion",
+    "time": "2026-03-06T11:00:00Z",
+    "context": "EU internal economic conflict"
+  },
+  {
+    "event_id": "EVT-0005",
+    "event_type": "national-policy",
+    "actor": "Italian government",
+    "decision": "discussion of windfall taxes on energy firms",
+    "cost": "political and economic debate",
+    "trace": "policy discussions related to energy price speculation",
+    "time": "2026-03-06T12:00:00Z",
+    "context": "Italian economic policy response"
+  },
+  {
+    "event_id": "EVT-0006",
+    "event_type": "society",
+    "actor": "international sports community",
+    "decision": "major sporting events hosted in Italy",
+    "cost": "organizational and economic investment",
+    "trace": "international participation in global sporting competitions",
+    "time": "2026-03-06T13:00:00Z",
+    "context": "international cultural cooperation"
+  }
+]
